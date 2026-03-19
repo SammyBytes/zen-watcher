@@ -1,0 +1,11 @@
+{
+  "name": "zen-watcher",
+  "module": "src/",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
