@@ -1,19 +1,19 @@
-import { getMozCentralJsonPushes } from "./modules/moz/services/json-pushes.service";
+import { getChangesSince } from "./modules/moz/services/json-pushes.service";
 
 console.log("[1] Initializing...");
 
+let lastPushId = 44204;
+
 try {
-  console.log("[2] Fetching data from Mozilla Central...");
-  const data = await getMozCentralJsonPushes();
-  console.log(
-    "[3] Data fetched:",
-    Object.keys(data).length,
-    "pushes",
-    Object.values(data).length,
-    "changesets",
-    Object.values(data).reduce((acc, curr) => acc + curr.changesets.length, 0),
-    "commits",
-  );
+  const data = await getChangesSince(lastPushId);
+  const pushIds = Object.keys(data).sort((a, b) => Number(a) - Number(b));
+
+  if (pushIds.length === 0) {
+    console.log("All done!. No new commits found.");
+    process.exit(0);
+  }
+
+  console.log("[2] Fetched data:", pushIds.length);
 
   console.log("[4] Loading zones...");
   const hotzonesFile = Bun.file("./zones.json");
@@ -25,15 +25,28 @@ try {
 
   console.log("[6] Checking commits...");
 
-  for (const [pushId, pushInfo] of Object.entries(data)) {
-    // @ts-ignore
+  for (const id of pushIds) {
+    const pushInfo = data[id];
+
+    if (!pushInfo) {
+      console.error(`[6] Error: No data for push ${id}`);
+      continue;
+    }
+
     pushInfo.changesets.forEach((commit: any) => {
-      commit.files.forEach((file: string) => {
-        if (isZone(file)) {
-          console.log(`[6] Commit ${commit.node} in ${file}`);
-        }
-      });
+      // Search for critical files
+      const criticalFiles = commit.files.filter((file: string) => isZone(file));
+
+      if (criticalFiles.length > 0) {
+        console.log(`\n   Commit: ${commit.node.substring(0, 12)}`);
+        console.log(`   Hash: ${commit.node.substring(0, 12)}`);
+        console.log(`   Desc: ${commit.desc.split("\n")[0]}`);
+        console.log(`   Files: ${criticalFiles.join(", ")}`);
+      }
     });
+
+    // We need to update the last push ID for the state.json file
+    lastPushId = Number(id);
   }
 
   console.log("[7] Done!");
