@@ -1,0 +1,4 @@
+export interface Zone {
+  name: string;
+  path: string;
+}
